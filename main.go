@@ -24,7 +24,7 @@ func main() {
 	client = slack.New(os.Getenv("SLACK_BOT_TOKEN"), slack.OptionAppLevelToken(os.Getenv("SLACK_APP_TOKEN")))
 	socketClient = socketmode.New(client)
 
-	fmt.Println("Starting Slackbot...")
+	fmt.Println("Starting Botman Slackbot...")
 
 	botmanConf = config.LoadFromEnv()
 	chatter = botman.GetChatter(botmanConf)
