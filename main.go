@@ -17,12 +17,15 @@ var botmanConf config.BotmanConfig
 var userId string
 var client *slack.Client
 var socketClient *socketmode.Client
+var verbose bool
 
 func main() {
 	godotenv.Load(".env")
 
 	client = slack.New(os.Getenv("SLACK_BOT_TOKEN"), slack.OptionAppLevelToken(os.Getenv("SLACK_APP_TOKEN")))
 	socketClient = socketmode.New(client)
+
+	verbose = boolFromEnv("BOTMAN_VERBOSE", false)
 
 	fmt.Println("Starting Botman Slackbot...")
 
@@ -33,6 +36,19 @@ func main() {
 	if err != nil {
 		fmt.Println("Error settig up Slackbot:", err)
 	}
+}
+
+func boolFromEnv(key string, fallback bool) bool {
+	val := os.Getenv(key)
+	if val == "" {
+		return fallback
+	}
+
+	if val == "1" || val == "true" {
+		return true
+	}
+
+	return false
 }
 
 // Returns a channel that ignores all values sent to it.

@@ -14,6 +14,9 @@ import (
 )
 
 func SetupSlackbot() error {
+	if verbose {
+		fmt.Println("Seting up Slackbot...")
+	}
 
 	//Get the user Id
 	response, err := client.AuthTest()
@@ -36,6 +39,11 @@ func SetupSlackbot() error {
 				log.Println("Shutting down socketmode listener")
 				return
 			case event := <-socketClient.Events:
+
+				if verbose {
+					fmt.Println("Incoming Event:", event.Type)
+				}
+
 				switch event.Type {
 				case socketmode.EventTypeEventsAPI:
 					eventsAPIEvent, ok := event.Data.(slackevents.EventsAPIEvent)
@@ -43,6 +51,10 @@ func SetupSlackbot() error {
 						log.Printf("Could not type cast the event to the EventsAPIEvent: %v\n", event)
 						continue
 					}
+					if verbose {
+						fmt.Println("Ack-ing event")
+					}
+
 					socketClient.Ack(*event.Request)
 					err := handleEvent(eventsAPIEvent)
 					if err != nil {
@@ -77,6 +89,10 @@ func handleEvent(event slackevents.EventsAPIEvent) error {
 			if strings.Contains(ev.Text, fmt.Sprintf("<@%v>", userId)) {
 				fmt.Printf("Handling Tagged Message: '%v'\n", getSubstring(ev.Text))
 				return handleMessage(ev)
+			}
+
+			if verbose {
+				fmt.Println("Ignoring Message event (not for me)")
 			}
 
 			return nil
@@ -114,11 +130,27 @@ func handleMessage(ev *slackevents.MessageEvent) error {
 		return err
 	}
 
+	if verbose {
+		fmt.Println("Message Thread:")
+		for _, m := range messages {
+			fmt.Printf("[%v] %v\n", m.Role, m.Content)
+		}
+		fmt.Println("\nGetting response...")
+	}
+
 	response := respond(messages)
+
+	if verbose {
+		fmt.Println("Sending Response:", getSubstring(response))
+	}
 	client.SendMessage(ev.Channel, slack.MsgOptionText(response, false), slack.MsgOptionTS(ts))
 
 	client.AddReaction("ballot_box_with_check", slack.NewRefToMessage(ev.Channel, ev.TimeStamp))
 	client.RemoveReaction("thought_balloon", slack.NewRefToMessage(ev.Channel, ev.TimeStamp))
+
+	if verbose {
+		fmt.Println("Done!")
+	}
 
 	return nil
 }
@@ -157,11 +189,7 @@ func getThread(ev *slackevents.MessageEvent) ([]models.ChatMessage, error) {
 
 	fmt.Printf("Got thread with %v messages\n", len(messages))
 
-	//Add New message
-	addition := cleanMessage(ev.Text)
-	if addition != "" {
-		current += fmt.Sprintf("<@%v> says:\n%v\n\n", ev.User, addition)
-	}
+	//Note: The current message is already part of the conversation replies, so no need to add it again.
 
 	if current != "" {
 		result = append(result, models.ChatMessage{Role: models.ChatMessageRoleUser, Content: current})
